@@ -10,7 +10,7 @@ class ITechGroup extends Model
 {
     use HasFactory;
 
-    protected $primaryKey = 'groupCode';
+    protected $primaryKey = 'code';
     public $incrementing = false;
     protected $keyType = 'string';
 
@@ -20,10 +20,11 @@ class ITechGroup extends Model
      * @var string[]
      */
     protected $fillable = [
-        'groupId',
-        'groupCode',
-        'groupRepPhone',
-        'groupRepEmail'
+        'id',
+        'code',
+        'name',
+        'representativePhone',
+        'representativeEmail'
     ];
 
     /**
@@ -31,7 +32,7 @@ class ITechGroup extends Model
      */
     public function savingsAccount(): HasOne
     {
-        return $this->hasOne(SavingsAccount::class, 'groupCode', 'groupCode');
+        return $this->hasOne(SavingsAccount::class, 'groupCode', 'code');
     }
 
     /**
@@ -39,7 +40,7 @@ class ITechGroup extends Model
      */
     public function operationsAccount(): HasOne
     {
-        return $this->hasOne(OperationsAccount::class, 'groupCode', 'groupCode');
+        return $this->hasOne(OperationsAccount::class, 'groupCode', 'code');
     }
 
     /**
@@ -47,6 +48,6 @@ class ITechGroup extends Model
      */
     public function welfareAccount(): HasOne
     {
-        return $this->hasOne(WelfareAccount::class, 'groupCode', 'groupCode');
+        return $this->hasOne(WelfareAccount::class, 'groupCode', 'code');
     }
 }

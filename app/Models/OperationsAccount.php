@@ -10,11 +10,31 @@ class OperationsAccount extends Model
 {
     use HasFactory;
 
+    protected $primaryKey = 'id';
+
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var string[]
+     */
+    protected $fillable = [
+        'id',
+        'codage',
+        'name',
+        'numcpt',
+        'grpCode',
+        'numcli',
+        'accType',
+        'initialBal',
+        'applyComis',
+        'isBlocked'
+    ];
+
     /**
      * Get the group that owns the account.
      */
     public function group(): BelongsTo
     {
-        return $this->belongsTo(ITechGroup::class, 'groupCode', 'groupCode');
+        return $this->belongsTo(ITechGroup::class, 'grpCode', 'code');
     }
 }
