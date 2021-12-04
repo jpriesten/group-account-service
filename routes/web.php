@@ -16,3 +16,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 });
+
+Route::get('/mailable', function () {
+    $groups = App\Models\ITechGroup::all();
+    if (count($groups) != 0) {
+        return new App\Mail\AccountsCreated($groups[0]);
+    } else return response($groups);
+});

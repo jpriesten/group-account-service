@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\SavingsAccount;
 use Illuminate\Http\Request;
+use Illuminate\Http\Response;
+use Symfony\Component\HttpFoundation\Response as ResponseCodes;
 
 class SavingsAccountController extends Controller
 {
@@ -20,12 +22,13 @@ class SavingsAccountController extends Controller
     /**
      * Store a newly created resource in storage.
      *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
+     * @param Request $request
+     * @param mixed $account
+     * @return Response
      */
-    public function store(Request $request)
+    public function store(Request $request, $account = null): Response
     {
-        //
+        return Response(['message' => 'Created'], ResponseCodes::HTTP_CREATED);
     }
 
     /**

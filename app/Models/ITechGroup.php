@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use \Illuminate\Database\Eloquent\Relations\HasOne;
 
+/**
+ * @mixin IdeHelperITechGroup
+ */
 class ITechGroup extends Model
 {
     use HasFactory;
@@ -23,6 +26,7 @@ class ITechGroup extends Model
         'id',
         'code',
         'name',
+        'representativeFirstName',
         'representativePhone',
         'representativeEmail'
     ];
@@ -32,7 +36,7 @@ class ITechGroup extends Model
      */
     public function savingsAccount(): HasOne
     {
-        return $this->hasOne(SavingsAccount::class, 'groupCode', 'code');
+        return $this->hasOne(SavingsAccount::class, 'grpCode', 'code');
     }
 
     /**
@@ -40,7 +44,7 @@ class ITechGroup extends Model
      */
     public function operationsAccount(): HasOne
     {
-        return $this->hasOne(OperationsAccount::class, 'groupCode', 'code');
+        return $this->hasOne(OperationsAccount::class, 'grpCode', 'code');
     }
 
     /**
@@ -48,6 +52,6 @@ class ITechGroup extends Model
      */
     public function welfareAccount(): HasOne
     {
-        return $this->hasOne(WelfareAccount::class, 'groupCode', 'code');
+        return $this->hasOne(WelfareAccount::class, 'grpCode', 'code');
     }
 }
