@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Traits\ResponseTrait;
 use App\Mail\AccountsCreated;
 use App\Models\ITechGroup;
 use App\Models\OperationsAccount;
@@ -12,6 +13,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
+use Swift_TransportException;
 use Symfony\Component\HttpFoundation\Response as ResponseCodes;
 use Throwable;
 use Twilio\Exceptions\ConfigurationException;
@@ -21,6 +23,8 @@ use Twilio\Rest\Client;
 
 class ITechGroupController extends Controller
 {
+    use ResponseTrait;
+
     /**
      * Display a listing of the resource.
      *
@@ -28,13 +32,18 @@ class ITechGroupController extends Controller
      */
     public function index(): Response
     {
-        $groups = ITechGroup::all();
-        if (count($groups) !== 0) {
-            $saving = $groups[0]->savingsAccount()->first();
-            return response($saving);
+        try {
+            $groups = ITechGroup::all();
+            foreach ($groups as $group) {
+                $savings = $group->savingsAccount;
+                $operations = $group->operationsAccount;
+                $welfare = $group->welfareAccount;
+            }
+            return $this->successResponse(['groups' => $groups, 'count' => count($groups)]);
+        } catch (\Exception $exception) {
+            report($exception);
+            return $this->errorResponse('Error getting group accounts', $exception, ResponseCodes::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        return response($groups);
     }
 
     /**
@@ -48,27 +57,23 @@ class ITechGroupController extends Controller
         $request->validate(['id' => 'required|int', 'code' => 'required|string', 'name' => 'required|string',
             'representativeFirstName' => 'required|string', 'representativePhone' => 'required|string',
             'representativeEmail' => 'required|string|email', 'accounts' => 'required|string']);
+
         try {
-            DB::transaction(function () use ($request) {
-                $group = new ITechGroup();
-                $group->id = $request->input('id');
-                $group->code = $request->input('code');
-                $group->name = $request->input('name');
-                $group->representativeFirstName = $request->input('representativeFirstName');
-                $group->representativePhone = $request->input('representativePhone');
-                $group->representativeEmail = $request->input('representativeEmail');
+            $group = new ITechGroup();
+            $group->id = $request->input('id');
+            $group->code = $request->input('code');
+            $group->name = $request->input('name');
+            $group->representativeFirstName = $request->input('representativeFirstName');
+            $group->representativePhone = $request->input('representativePhone');
+            $group->representativeEmail = $request->input('representativeEmail');
+
+            DB::transaction(function () use ($group, $request) {
                 $groupSaved = $group->save();
 
                 if ($groupSaved && is_string($request->input('accounts'))) {
-                    $accounts = json_decode($request->input('accounts'), true, 512, JSON_THROW_ON_ERROR);
-                    var_dump($accounts);
+                    $accountsData = json_decode($request->input('accounts'), true, 512, JSON_THROW_ON_ERROR);
 
-                    if ($accounts !== null) {
-                        // Cast to array
-                        $accountsArray = array($accounts);
-                        $accountsData = json_decode($accountsArray[0], true, 512, JSON_THROW_ON_ERROR);
-                        var_dump(['Savings' => (string)$accountsData[0]['id'], 'Operations' => (string)$accountsData[1]['id'],
-                            'Welfare' => (string)$accountsData[2]['id']]);
+                    if ($accountsData !== null) {
                         // Handle the case of recording the savings account
                         $savingsAccount = new SavingsAccount();
                         if (count($accountsData[0]) !== 0) {
@@ -111,12 +116,22 @@ class ITechGroupController extends Controller
                 $this->sendSMS($group);
 
             }, 2);
-            return response(['message' => 'Group accounts created successfully'], ResponseCodes::HTTP_CREATED);
+
+            return $this->successResponse('Group accounts created successfully', [],
+                ResponseCodes::HTTP_CREATED);
         } catch (Throwable $exception) {
-            return response(['message' => 'An error occurred, please try again. If it persists please contact support',
-                'extra' => $exception->getMessage(), 'code' => $exception->getCode(), 'class' => get_class($exception),
-                'trace' => $exception->getTraceAsString()], ResponseCodes::HTTP_INTERNAL_SERVER_ERROR
-            );
+            report($exception);
+//            if ($exception instanceof Swift_TransportException) {
+//                return $this->errorResponse('Group accounts saved but failed to send notifications. Resend notifications manually',
+//                    $exception, ResponseCodes::HTTP_INTERNAL_SERVER_ERROR, ['sentEmail' => $emailSent,
+//                        'sendSms' => $smsSent]);
+//            }
+            if ($exception->getCode() === "23000") {
+                return $this->errorResponse('Group accounts already saved',
+                    $exception, ResponseCodes::HTTP_INTERNAL_SERVER_ERROR);
+            }
+            return $this->errorResponse('Error saving group accounts. If it persists, please contact support',
+                $exception, ResponseCodes::HTTP_INTERNAL_SERVER_ERROR);
         }
 
     }
@@ -131,6 +146,49 @@ class ITechGroupController extends Controller
     {
         $group = ITechGroup::find($id);
         return response($group);
+    }
+
+    /**
+     * Resend email or sms notification or both.
+     *
+     * @param Request $request
+     * @param string $code
+     * @return Response
+     */
+    public function sendNotification(Request $request, string $code): Response
+    {
+        $emailSent = false;
+        $smsSent = false;
+        $notificationType = $request->input('type');
+        $group = ITechGroup::find($code);
+
+        try {
+            if ($group !== null) {
+                if (isset($notificationType)) {
+                    if ($notificationType === 'email') {
+                        Mail::to($group->representativeEmail)->send(new AccountsCreated($group));
+                        $emailSent = true;
+                        return $this->successResponse('Email notifications sent', ['sentEmail' => $emailSent]);
+                    }
+                    if ($notificationType === 'sms') {
+                        $this->sendSMS($group);
+                        $smsSent = true;
+                        return $this->successResponse('Sms notifications sent', ['sendSms' => $smsSent]);
+                    }
+                }
+                Mail::to($group->representativeEmail)->send(new AccountsCreated($group));
+                $emailSent = true;
+                $this->sendSMS($group);
+                $smsSent = true;
+                return $this->successResponse('Notifications sent', ['sentEmail' => $emailSent, 'sendSms' => $smsSent]);
+            }
+            return $this->errorResponse('Group not found', null, ResponseCodes::HTTP_NOT_FOUND);
+        } catch (\Exception $exception) {
+            report($exception);
+            return $this->errorResponse('An internal error occurred. If it persists, please contact support',
+                $exception, ResponseCodes::HTTP_INTERNAL_SERVER_ERROR, ['sentEmail' => $emailSent,
+                    'sendSms' => $smsSent]);
+        }
     }
 
     /**
@@ -163,12 +221,10 @@ class ITechGroupController extends Controller
 //            ]);
 
         $twilio = new Client(env('TWILIO_ACCOUNT_SID'), env('TWILIO_AUTH_TOKEN'));
-        $message = $twilio->messages->create('+2347047390150', ['from' => env('TWILIO_MESSAGE_SERVICE_ID'),
+        return $twilio->messages->create('+2347047390150', ['from' => env('TWILIO_MESSAGE_SERVICE_ID'),
             'body' => "Dear " . ucwords($group->representativeFirstName) . ", the group " . ucwords($group->name) . " successfully created at: " . $group->created_at .
                 ". Here are the accounts: Savings:" . $group->savingsAccount->numcpt
                 . ", Operations:" . $group->operationsAccount->numcpt
                 . ", Welfare:" . $group->welfareAccount->numcpt . "\nThank you for using Pether Digital Services"]);
-        print_r($message->toArray());
-        return $message;
     }
 }

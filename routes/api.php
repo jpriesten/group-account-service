@@ -19,6 +19,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('groups', [ITechGroupController::class, 'index']);
 Route::get('groups/{id}', [ITechGroupController::class, 'show']);
 Route::post('group', [ITechGroupController::class, 'store']);
+Route::post('notify/{code}', [ITechGroupController::class, 'sendNotification']);
 
 Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
     return $request->user();

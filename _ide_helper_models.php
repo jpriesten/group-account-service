@@ -47,6 +47,7 @@ namespace App\Models{
  * @method static \Illuminate\Database\Eloquent\Builder|ITechGroup newModelQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|ITechGroup newQuery()
  * @method static \Illuminate\Database\Eloquent\Builder|ITechGroup query()
+ * @method static \Illuminate\Database\Eloquent\Builder|ITechGroup find($id, $columns = ['*'])
  * @method static \Illuminate\Database\Eloquent\Builder|ITechGroup whereCode($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ITechGroup whereCreatedAt($value)
  * @method static \Illuminate\Database\Eloquent\Builder|ITechGroup whereId($value)
