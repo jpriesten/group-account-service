@@ -220,6 +220,7 @@ class ITechGroupController extends Controller
 //                'encoding' => 'UNICODE'
 //            ]);
 
+//        todo: Replace hardcoded phone number with variable
         $twilio = new Client(env('TWILIO_ACCOUNT_SID'), env('TWILIO_AUTH_TOKEN'));
         return $twilio->messages->create('+2347047390150', ['from' => env('TWILIO_MESSAGE_SERVICE_ID'),
             'body' => "Dear " . ucwords($group->representativeFirstName) . ", the group " . ucwords($group->name) . " successfully created at: " . $group->created_at .
